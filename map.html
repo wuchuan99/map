@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>选择地址</title>
+    <link rel="stylesheet" href="../newFeiyuetixi/css/reset.css">
+    <link rel="stylesheet" href="../newFeiyuetixi/layui/css/layui.css">
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.4&key=fe7600dc960339960524ec20c6b3882e"></script>
+    <style>
+        html, body {
+            height: 100%;
+        }
+        #app {
+            height: 100%;
+            position: relative;
+        }
+        #app .masker {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 10;
+        }
+        #result {
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 5rem;
+            overflow-y: scroll;
+            background-color: #fff;
+        }
+        .amap_lib_placeSearch {
+            height: 100%;
+            overflow-y: scroll;
+        }
+        .amap_lib_placeSearch_page {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+        #me {
+            border-top: 1px solid #ccc;
+            margin-top: 6px;
+            padding-top: 6px;
+            width: 100%;
+            display: block;
+        }
+        .amap_lib_placeSearch .poibox {
+            border-bottom: 1px solid #eaeaea;
+            cursor: pointer;
+            padding: 5px 0 5px 10px;
+            position: relative;
+            min-height: 35px;
+        }
+        .amap_lib_placeSearch_poi {
+            background: url(https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png)
+            no-repeat;
+            height: 31px;
+            width: 19px;
+            cursor: pointer;
+            left: -1px;
+            text-align: center;
+            color: #fff;
+            font: 12px arial, simsun, sans-serif;
+            padding-top: 3px;
+        }
+        .amap_lib_placeSearch .poibox .poi-title {
+            margin-left: 25px;
+            font-size: 13px;
+            overflow: hidden;
+        }
+        .amap_lib_placeSearch .amap_lib_placeSearch_poi {
+            position: absolute;
+        }
+        .amap_lib_placeSearch .poibox .poi-info {
+            word-break: break-all;
+            margin: 0 0 0 25px;
+            overflow: hidden;
+        }
+        .amap_lib_placeSearch .poibox .poi-info p {
+            color: #999;
+            font-family: Tahoma;
+            line-height: 20px;
+            font-size: 12px;
+        }
+        .amap_lib_placeSearch .poibox .poibox-icon {
+            margin-left: 7px;
+            margin-top: 4px;
+        }
+        .amap-pl-pc .poi-img {
+            float: right;
+            margin: 3px 8px 0;
+            width: 90px;
+            height: 56px;
+            overflow: hidden;
+        }
+        .poibox {
+            cursor: pointer;
+        }
+        .poibox:hover {
+            background: #f6f6f6;
+        }
+        .selected {
+            background-image: url(https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png) !important;
+        }
+        .amap-info-content {
+            width: 200px !important;
+        }
+        .mapBox {
+            position: absolute;
+            left: 0;
+            top: 58px;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+        }
+        #iCenter {
+            width: 100%;
+            height: 100%;
+        }
+       .searchBox {
+            padding: 10px;
+            padding-right: 70px;
+            position: relative;
+        }
+        .searchBox .layui-icon-search {
+            position: absolute;
+            left: .5rem;
+            top: 20px;
+        }
+        .searchBox .layui-icon-close-fill {
+            position: absolute;
+            right: 75px;
+            top: 20px;
+            color: #555;
+        }
+
+        .searchBox input {
+            border: 0;
+            padding-left: .65rem;
+            padding-right: 26px;
+            background-color: #eee;
+            /* width: 80%; */
+        }
+        .ok {
+            width: 90%;
+            position: fixed;
+            bottom: .5rem;
+            left: 5%;
+            height: .8rem;
+            line-height: .8rem;
+            text-align: center;
+            color: #fff;
+            background-color: #3B82EE;
+            border-radius: 0.06rem;
+
+        }
+        #search {
+            position: absolute;
+            right: 10px;
+            top: 9px;
+            width: 50px;
+            height: 34px;
+            /* border: 1px solid #3B82EE; */
+            color: #666;
+            line-height: 34px;
+            text-align: center;
+            border-radius: 4px;
+            margin-top: 3px;
+            background-color: #eee;
+        }   
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="masker"></div>
+        <div class="searchBox">
+            <i class="layui-icon layui-icon-search"></i>
+            <span @click="search" id="search">搜索</span>
+            <input type="text" id="tipinput" name="tipinput" value="" placeholder="请输入您的会议地址" autocomplete="off" class="layui-input" v-model="address">
+            <i class="layui-icon layui-icon-close-fill" @click="clearValue" v-show="address"></i>
+        </div>  
+       
+        <div class="mapBox">
+            <div id="iCenter"></div>
+            <div id="result" class="amap_lib_placeSearch" v-if="poiArr.length && poiArr.length > 0">
+                <div class="amap_lib_placeSearch_list amap-pl-pc"  v-for="(item,index) in poiArr"  
+                @click="openMarkerTipById1(index,item, $event)"  
+                :key="index">
+                    <div class="poibox" style="border-bottom: 1px solid #eaeaea">
+                        <div class="amap_lib_placeSearch_poi poibox-icon" :class="index==selectedIndex?'selected':''">{{index+1}}</div>    
+                        <div class="poi-img" v-if="item.url" :style="'background-image:url('+item.url+'?operate=merge&amp;w=90&amp;h=56&amp;position=5)'"
+                        ></div>
+                        <h3 class="poi-title" >
+                            <span class="poi-name">{{item.name}}</span>
+                        </h3>
+                        <div class="poi-info">
+                            <p class="poi-addr">地址：{{item.address}}</p>
+                            <p class="poi-tel">电话：{{item.tel}}</p>
+                        </div>
+                            <div class="clear"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div> 
+</body>
+    <script src="../newFeiyuetixi/js/rem.js"></script>
+    <script src="../js/jquery.min.js"></script>
+    <script src="../js/vue.js"></script>
+    <script src="../newFeiyuetixi/layui/layui.all.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                map:'',//保存地址的经纬度
+                address:'',//搜索的地区
+                poiArr: [],//左边搜索出来的数组
+                windowsArr: [],//信息窗口的数组
+                marker: [],
+                mapObj: "",//地图对象
+                selectedIndex: -1,
+                mar: null
+            },
+            mounted() {
+                this.mapInit()
+                this.placeSearch("")
+            },
+            methods: {
+                //创建一个map
+                mapInit() {
+                    this.mapObj = new AMap.Map("iCenter", {
+                        resizeEnable: true
+                    })
+                },
+                //根据名字地址去搜索结果
+                placeSearch(name) {
+                    var _this = this
+                    var MSearch;
+                    this.mapObj.plugin(
+                        ["AMap.PlaceSearch", "AMap.ToolBar", "AMap.Scale","AMap.Autocomplete", "AMap.Geocoder", "AMap.Geolocation"],
+                        () => {
+                            this.mapObj.on('click', function(ev) {
+                                if(_this.mar){
+                                    _this.mapObj.remove(_this.mar);
+                                }
+                                // 触发事件的对象
+                                var target = ev.target;
+                                // 触发事件的地理坐标，AMap.LngLat 类型
+                                var lnglat = ev.lnglat;
+                                // 触发事件的像素坐标，AMap.Pixel 类型
+                                var pixel = ev.pixel;
+                                // 触发事件类型
+                                var type = ev.type;
+                                var geocoder = new AMap.Geocoder({
+                                radius: 1000,
+                                    extensions: "all"
+                                });
+                                geocoder.getAddress([ev.lnglat.lng, ev.lnglat.lat], function(status, result) {
+                                    if (status === 'complete' && result.info === 'OK') {
+                                        if (result && result.regeocode) {
+                                            console.log(result)
+                                            _this.address = result.regeocode.formattedAddress;
+                                            var mapMarker = [ev.lnglat.lng, ev.lnglat.lat]
+                                            console.log(mapMarker)
+                                            // var marker = new AMap.Marker({
+                                            //     position: new AMap.LngLat(ev.lnglat.lng, ev.lnglat.lat),   // 经纬度对象，也可以是经纬度构成的一维数组[116.39, 39.9]
+                                            //     title: 'wuhan'
+                                            // });
+                                            var markerOption = {
+                                                map: _this.mapObj,
+                                                position: new AMap.LngLat(ev.lnglat.lng, ev.lnglat.lat)
+                                            };
+                                            _this.mar = new AMap.Marker(markerOption);
+                                            // _this.marker.push(new AMap.LngLat(ev.lnglat.lng, ev.lnglat.lat));
+                                            var addressComponent = result.regeocode.addressComponent
+                                            var infoWindow = new AMap.InfoWindow({
+                                                content:
+                                                "<h3>" +
+                                                    addressComponent.province + addressComponent.city + addressComponent.district + addressComponent.township +
+                                                "</h3>" +
+                                                `地址: ${result.regeocode.formattedAddress}` +
+                                                `<input type="hidden" value=${ev.lnglat.lng + '-' + ev.lnglat.lat}>` +
+                                                `<a  id="me"  href="javascript:;">保存地址</a>`,
+                                                size: new AMap.Size(300, 0),
+                                                autoMove: true,
+                                                offset: new AMap.Pixel(0, -30)
+                                            })
+                                            var obj = _this.mar.getPosition();
+                                            infoWindow.open(_this.mapObj, obj)                  
+                                            window.removeEventListener("click", _this.demo)
+                                            window.addEventListener("click", _this.demo)
+                                        }
+                                    }
+                                });
+                            });
+                            var _this = this
+                            geolocation = new AMap.Geolocation({
+                                enableHighAccuracy: true, // 是否使用高精度定位，默认:true
+                                timeout: 10000,           // 超过10秒后停止定位，默认：无穷大
+                                maximumAge: 0,            // 定位结果缓存0毫秒，默认：0
+                                convert: true,            // 自动偏移坐标，偏移后的坐标为高德坐标，默认：true
+                                showButton: true,         // 显示定位按钮，默认：true
+                                buttonPosition: 'LB',     // 定位按钮停靠位置，默认：'LB'，左下角
+                                buttonOffset: new AMap.Pixel(10, 20), // 定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                                showMarker: false,         // 定位成功后在定位到的位置显示点标记，默认：true
+                                showCircle: false,         // 定位成功后用圆圈表示定位精度范围，默认：true
+                                panToLocation: true,      // 定位成功后将定位到的位置作为地图中心点，默认：true
+                                zoomToAccuracy:true ,      // 定位成功后调整地图视野范围使定位位置及精度范围视野内可见，默认：false 
+                            });
+                            _this.mapObj.addControl(geolocation);
+                            geolocation.getCurrentPosition((status, result) => {
+                                $('.masker').hide()
+                                console.log(result)
+                                if(result && result.position){
+                                    this.address = result.formattedAddress
+                                    var mapMarker = [result.position.lng, result.position.lat]
+                                    console.log(mapMarker)
+                                    // var marker = new AMap.Marker({
+                                    //     position: new AMap.LngLat(result.position.lng, result.position.lat),   // 经纬度对象，也可以是经纬度构成的一维数组[116.39, 39.9]
+                                    //     title: 'wuhan'
+                                    // });
+                                    var markerOption = {
+                                        map: this.mapObj,
+                                        position: new AMap.LngLat(result.position.lng, result.position.lat)
+                                    };
+                                    var mar = new AMap.Marker(markerOption);
+                                    this.mar = mar
+                                    // this.marker.push(new AMap.LngLat(result.position.lng, result.position.lat));
+                                    var addressComponent = result.addressComponent
+                                    var infoWindow = new AMap.InfoWindow({
+                                        content:
+                                        "<h3>" +
+                                            addressComponent.province + addressComponent.city + addressComponent.district + addressComponent.township +
+                                        "</h3>" +
+                                        `地址: ${result.formattedAddress}` +
+                                        `<input type="hidden" value=${result.position.lng + '-' + result.position.lat}>` +
+                                        `<a  id="me"  href="javascript:;">保存地址</a>`,
+                                        size: new AMap.Size(300, 0),
+                                        autoMove: true,
+                                        offset: new AMap.Pixel(0, -30)
+                                    })
+                                    this.windowsArr.push(infoWindow)
+                                    var _this = this
+                                    var obj = mar.getPosition()
+                                    infoWindow.open(_this.mapObj, obj)
+                                    window.removeEventListener("click", _this.demo)
+                                    window.addEventListener("click", _this.demo)
+                                }
+                            })   
+                        }
+                    );
+                },
+                //结果的回调
+                keywordSearch_CallBack(data) {
+                    let _this = this
+                    console.log(data)
+                    if(data.poiList.pois.length > 0){
+                        var poiArr = data.poiList.pois
+                        var resultCount = poiArr.length
+                        this.poiArr = poiArr //左边要渲染的数据
+                        this.mapObj.remove(this.marker)
+                        this.marker = []
+                        this.windowsArr = []
+                        for (var i = 0; i < resultCount; i++) {
+                            this.addmarker(i, poiArr[i])
+                            this.poiArr[i].url = this.poiArr[i].photos? this.poiArr[i].photos[0]? this.poiArr[i].photos[0].url: "": ""
+                        }
+                        this.mapObj.setFitView()
+                    }
+                },
+                //添加marker&infowindow
+                addmarker(i, d) {
+                    console.log(d)
+                    var lngX = d.location.getLng();
+                    var latY = d.location.getLat();
+                    var markerOption = {
+                        map: this.mapObj,
+                        position: new AMap.LngLat(lngX, latY)
+                    };
+                    var mar = new AMap.Marker(markerOption);
+                    this.marker.push(new AMap.LngLat(lngX, latY));
+                    var infoWindow = new AMap.InfoWindow({
+                        content:
+                        "<h3>" +
+                        d.name +
+                        "</h3>" +
+                        this.TipContents(d.name, d.address) +
+                        `<input type="hidden" value=${lngX + '-' + latY}>` +
+                        `<a  id="me"  href="javascript:;">保存地址</a>`,
+                        size: new AMap.Size(300, 0),
+                        autoMove: true,
+                        offset: new AMap.Pixel(0, -30)
+                    });
+                    this.windowsArr.push(infoWindow)
+                    var _this = this
+                    var aa = (e) => {
+                        var obj = mar.getPosition()
+                        this.map = obj
+                        window.removeEventListener("click", _this.demo)
+                        infoWindow.open(_this.mapObj, obj);
+                        window.addEventListener("click", _this.demo)
+                    }
+                    AMap.event.addListener(mar, "click", aa)
+                },
+                TipContents(name, address) {
+                    //窗体内容
+                    if (
+                        name == "" ||
+                        name == "undefined" ||
+                        name == null ||
+                        name == " undefined" ||
+                        typeof name == "undefined"
+                    ) {
+                        type = "暂无";
+                    }
+                    if (
+                        address == "" ||
+                        address == "undefined" ||
+                        address == null ||
+                        address == " undefined" ||
+                        typeof address == "undefined"
+                    ) {
+                        address = "暂无";
+                    }
+                    var str = `地址：${address}`
+                    return str
+                },
+                demo(e) {
+                    if (e.target.id === `me`) {
+                        e.stopPropagation();
+                        var element = e.target.previousElementSibling
+                        this.saveAddress(element);
+                    }
+                },
+                saveAddress(e) {
+                    var _this = this
+                    var str = e.value
+                    var lng = Number(str.split('-')[0]) 
+                    var lat = Number(str.split('-')[1])
+                    var geocoder = new AMap.Geocoder({
+                        radius: 1000,
+                            extensions: "all"
+                        });
+                        geocoder.getAddress([lng, lat], function(status, result) {
+                            if (status === 'complete' && result.info === 'OK') {
+                                if (result && result.regeocode) {
+                                    localStorage.setItem('adress', result.regeocode.formattedAddress)
+                                    localStorage.setItem('lng', lng)
+                                    localStorage.setItem('lat', lat)
+                                    // location.href = '../feiyuetixi.html?userId=83210'
+                                    history.go(-1)  
+                                }
+                            }
+                        });
+                    console.log(str)
+                },
+                openMarkerTipById1(pointid, item, thiss) {
+                    if(this.mar){
+                        this.mapObj.remove(this.mar);
+                    }
+                    // console.log(pointid, thiss)
+                    //根据id 打开搜索结果点tip
+                    this.address = item.name
+                    this.selectedIndex = pointid
+                    this.map = this.marker[pointid]
+                    window.removeEventListener("click", this.demo);
+                    this.windowsArr[pointid].open(this.mapObj, this.marker[pointid])
+                    window.addEventListener("click", this.demo);
+                },
+                search() {
+                    if(!this.address){
+                        layer.msg('请输入地址')
+                        return
+                    }
+                    if(this.mar){
+                        this.mapObj.remove(this.mar);
+                    }
+                    this.selectedIndex = -1
+                    $('#result').scrollTop(0)
+                    var MSearch = new AMap.PlaceSearch({
+                        map: this.mapObj
+                    })
+                    AMap.event.addListener(MSearch,"complete",this.keywordSearch_CallBack) //返回地点查询结果
+                    MSearch.search(this.address); //关键字查询
+                },
+                clearValue(){
+                    this.address = ''
+                }
+            },
+        })
+    </script>
+</html>
